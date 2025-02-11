@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':status' => $_POST['status'],
         ]);
         $message = "Task added successfully!";
-} elseif (isset($_POST['update_task'])) {
+    } elseif (isset($_POST['update_task'])) {
         
         $stmt = $conn->prepare("UPDATE tasks SET title = :title, description = :description, due_date = :due_date, priority = :priority, status = :status WHERE id = :id");
         $stmt->execute([
@@ -27,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = "Task updated successfully!";
     }
 }
+
 if (isset($_GET['delete_id'])) {
     $stmt = $conn->prepare("DELETE FROM tasks WHERE id = :id");
     $stmt->execute([':id' => $_GET['delete_id']]);
@@ -46,12 +47,30 @@ if ($filter_status) {
 }
 $query .= " ORDER BY $sort";
 
-?><!DOCTYPE html>
+$stmt = $conn->prepare($query);
+if ($filter_priority) {
+    $stmt->bindValue(':priority', $filter_priority);
+}
+if ($filter_status) {
+    $stmt->bindValue(':status', $filter_status);
+}
+$stmt->execute();
+$tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+?>
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Task Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .modal-content {
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+    </style>
 </head>
 <body>
     <div class="container mt-5">
@@ -65,6 +84,16 @@ $query .= " ORDER BY $sort";
             Add New Task
         </button>
 
+        <div class="mb-3">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="sort" class="form-label">Sort By</label>
+                    <select class="form-select" id="sort" name="sort">
+                        <option value="due_date" <?php echo ($sort === 'due_date') ? 'selected' : ''; ?>>Due Date</option>
+                        <option value="priority" <?php echo ($sort === 'priority') ? 'selected' : ''; ?>>Priority</option>
+                        <option value="status" <?php echo ($sort === 'status') ? 'selected' : ''; ?>>Status</option>
+                    </select>
+                </div>
                 <div class="col-md-3">
                     <label for="filter_priority" class="form-label">Filter by Priority</label>
                     <select class="form-select" id="filter_priority" name="filter_priority">
@@ -83,6 +112,11 @@ $query .= " ORDER BY $sort";
                         <option value="Done" <?php echo ($filter_status === 'Done') ? 'selected' : ''; ?>>Done</option>
                     </select>
                 </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary mt-4">Apply</button>
+                </div>
+            </form>
+        </div>
 
         <table class="table table-bordered">
             <thead>
@@ -92,7 +126,7 @@ $query .= " ORDER BY $sort";
                     <th>Due Date</th>
                     <th>Priority</th>
                     <th>Status</th>
-                    <th>Actions.</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -161,6 +195,7 @@ $query .= " ORDER BY $sort";
             </div>
         </div>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function resetForm() {
@@ -170,6 +205,7 @@ $query .= " ORDER BY $sort";
             document.querySelector('button[name="add_task"]').style.display = 'inline-block';
             document.querySelector('button[name="update_task"]').style.display = 'none';
         }
+
         function editTask(taskId) {
             fetch(`get_task.php?id=${taskId}`)
                 .then(response => response.json())
@@ -185,7 +221,7 @@ $query .= " ORDER BY $sort";
                     document.querySelector('button[name="add_task"]').style.display = 'none';
                     document.querySelector('button[name="update_task"]').style.display = 'inline-block';
                 });
-            }
+        }
     </script>
 </body>
 </html>
